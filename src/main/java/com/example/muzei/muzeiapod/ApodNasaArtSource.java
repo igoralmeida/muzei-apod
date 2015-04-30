@@ -20,7 +20,9 @@ package com.example.muzei.muzeiapod;
 import android.content.Intent;
 import android.net.Uri;
 
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.net.URISyntaxException;
 
 import com.google.android.apps.muzei.api.Artwork;
@@ -30,10 +32,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
-import android.net.http.AndroidHttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.BasicResponseHandler;
-import org.apache.http.client.ResponseHandler;
 import java.io.IOException;
 
 public class ApodNasaArtSource extends RemoteMuzeiArtSource {
@@ -52,20 +50,15 @@ public class ApodNasaArtSource extends RemoteMuzeiArtSource {
         setUserCommands(BUILTIN_COMMAND_ID_NEXT_ARTWORK);
     }
 
-    public String getURLContent(String url)
-    {
+    public Document getURLDocument(URL url) {
+        Document d;
         try {
-            /* TODO replace with Jsoup.parse(URL url, int timeoutMillis) */
-            AndroidHttpClient httpClient = AndroidHttpClient.newInstance(null);
-            HttpGet httpGet = new HttpGet(url);
-            ResponseHandler<String> resHandler = new BasicResponseHandler();
-            String page = httpClient.execute(httpGet, resHandler);
-            return page;
-        }  catch (IOException e) {
+            d = Jsoup.parse(url, 20*1000); /* ms timeout */
+        } catch (IOException e) {
             return null;
         }
+        return d;
     }
-
 
     @Override
     protected void onTryUpdate(int reason) throws RetryException {
@@ -77,13 +70,22 @@ public class ApodNasaArtSource extends RemoteMuzeiArtSource {
         }
 
         URI mainUri = topUri.resolve("/apod/astropix.html");
-        String bodyStr =  getURLContent(mainUri.toString());
+        URL mainUrl;
+        try {
+            mainUrl = mainUri.toURL();
+        } catch (MalformedURLException e) {
+            return;
+        }
+        Document urlDoc =  getURLDocument(mainUrl);
+
+        if (urlDoc == null) {
+            throw new RetryException();
+        }
 
         /* TODO code below should go to a separate method/class */
 
         /* start parsing page */
-        Document doc = Jsoup.parse(bodyStr);
-        Element body = doc.body();
+        Element body = urlDoc.body();
 
         /* get image URI */
         Element firstCenterTag = body.child(0);
