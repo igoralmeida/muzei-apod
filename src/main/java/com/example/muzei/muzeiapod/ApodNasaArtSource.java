@@ -20,6 +20,9 @@ package com.example.muzei.muzeiapod;
 import android.content.Intent;
 import android.net.Uri;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -114,8 +117,13 @@ public class ApodNasaArtSource extends RemoteMuzeiArtSource {
         int idx = secondCenterText.lastIndexOf(title) + title.length();
         String byline = secondCenterText.substring(idx).trim();
 
-        /* TODO figure out the permanent link */
-        String link = "http://apod.nasa.gov/apod/astropix.html";
+        /* figure out the permanent link */
+        /* TODO it would be safer to do this looking at the next/previous
+         * anchors in the page...
+         */
+        SimpleDateFormat sdf = new SimpleDateFormat("yyMMdd");
+        String date = sdf.format(new Date());
+        String link = "http://apod.nasa.gov/apod/ap" + date + ".html";
 
         publishArtwork(new Artwork.Builder()
             .title(title)
