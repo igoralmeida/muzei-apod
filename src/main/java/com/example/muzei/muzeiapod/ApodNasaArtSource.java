@@ -31,6 +31,7 @@ import com.google.android.apps.muzei.api.RemoteMuzeiArtSource;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
 
@@ -87,9 +88,17 @@ public class ApodNasaArtSource extends RemoteMuzeiArtSource {
         /* start parsing page */
         Element body = urlDoc.body();
 
-        /* get image URI */
+        /* to get image URI, look for the anchor just above it */
         Element firstCenterTag = body.child(0);
-        Element imgAnchor = firstCenterTag.getElementsByTag("a").last();
+        Element secondPTag = firstCenterTag.child(2);
+        Elements anchors = secondPTag.getElementsByTag("a");
+        if (anchors.isEmpty()) {
+            /* probably a video or something fancy */
+            throw new RetryException();
+        }
+
+        /* get the image uri */
+        Element imgAnchor = anchors.last();
         Element img = imgAnchor.getElementsByTag("img").first();
         URI bigImageUri = topUri.resolve("/apod/" + img.attr("src"));
         String uri = bigImageUri.toString();
