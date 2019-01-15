@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Igor Almeida.
+ * Copyright 2014-2019 Igor Almeida.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 
 package com.example.muzei.muzeiapod;
 
-import android.content.Intent;
 import android.net.Uri;
 
 import java.text.SimpleDateFormat;
@@ -28,8 +27,8 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URISyntaxException;
 
-import com.google.android.apps.muzei.api.Artwork;
-import com.google.android.apps.muzei.api.RemoteMuzeiArtSource;
+import com.google.android.apps.muzei.api.provider.MuzeiArtProvider;
+import com.google.android.apps.muzei.api.provider.Artwork;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -38,21 +37,8 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 
-public class ApodNasaArtSource extends RemoteMuzeiArtSource {
+public class ApodNasaArtSource extends MuzeiArtProvider {
     private static final String TAG = "ApodNasaforMuzei";
-    private static final String SOURCE_NAME = "ApodNasaSource";
-
-    private static final int ROTATE_TIME_MILLIS = 24 * 60 * 60 * 1000; // rotate every 24 hours
-
-    public ApodNasaArtSource() {
-        super(SOURCE_NAME);
-    }
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        setUserCommands(BUILTIN_COMMAND_ID_NEXT_ARTWORK);
-    }
 
     public Document getURLDocument(URL url) {
         Document d;
@@ -65,10 +51,10 @@ public class ApodNasaArtSource extends RemoteMuzeiArtSource {
     }
 
     @Override
-    protected void onTryUpdate(int reason) throws RetryException {
+    protected void onLoadRequested(boolean initial) {
         URI topUri;
         try {
-            topUri = new URI("http://apod.nasa.gov/");
+            topUri = new URI("https://apod.nasa.gov/");
         } catch (URISyntaxException e) {
             return;
         }
@@ -83,7 +69,7 @@ public class ApodNasaArtSource extends RemoteMuzeiArtSource {
         Document urlDoc =  getURLDocument(mainUrl);
 
         if (urlDoc == null) {
-            throw new RetryException();
+            return;
         }
 
         /* TODO code below should go to a separate method/class */
@@ -97,7 +83,7 @@ public class ApodNasaArtSource extends RemoteMuzeiArtSource {
         Elements anchors = secondPTag.getElementsByTag("a");
         if (anchors.isEmpty()) {
             /* probably a video or something fancy */
-            throw new RetryException();
+            return;
         }
 
         /* get the image uri */
@@ -123,16 +109,16 @@ public class ApodNasaArtSource extends RemoteMuzeiArtSource {
          */
         SimpleDateFormat sdf = new SimpleDateFormat("yyMMdd");
         String date = sdf.format(new Date());
-        String link = "http://apod.nasa.gov/apod/ap" + date + ".html";
+        String link = "https://apod.nasa.gov/apod/ap" + date + ".html";
 
-        publishArtwork(new Artwork.Builder()
+        setArtwork(new Artwork.Builder()
             .title(title)
             .byline(byline)
-            .imageUri(Uri.parse(uri))
+            .persistentUri(Uri.parse(uri))
             .token(title)
-            .viewIntent(new Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+            .webUri(Uri.parse(link))
             .build());
-        scheduleUpdate(System.currentTimeMillis() + ROTATE_TIME_MILLIS);
+        //updates are now set by "auto-advance" in muzei itself
     }
 }
 
